@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tax Freedom Calculator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Source+Serif+4:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --red: #B22234;
+      --navy: #3C3B6E;
+      --white: #FFFFFF;
+      --gold: #FFD700;
+      --dark: #1a1a2e;
+    }
+
+    body {
+      min-height: 100vh;
+      font-family: 'Source Serif 4', serif;
+      background: var(--dark);
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* ── WAVING FLAG CANVAS ── */
+    #flagCanvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      opacity: 0.55;
+    }
+
+    /* dark overlay so text stays readable */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(
+        135deg,
+        rgba(10,10,30,0.72) 0%,
+        rgba(10,10,30,0.55) 50%,
+        rgba(10,10,30,0.72) 100%
+      );
+      z-index: 1;
+    }
+
+    /* ── PAGE LAYOUT ── */
+    .page {
+      position: relative;
+      z-index: 2;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2.5rem 1.2rem 4rem;
+    }
+
+    /* ── HEADER ── */
+    header {
+      text-align: center;
+      margin-bottom: 2.4rem;
+      animation: fadeDown 0.9s ease both;
+    }
+    header .eyebrow {
+      font-family: 'Oswald', sans-serif;
+      font-size: 0.78rem;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 0.5rem;
+    }
+    header h1 {
+      font-family: 'Oswald', sans-serif;
+      font-size: clamp(2rem, 5vw, 3.4rem);
+      font-weight: 700;
+      color: var(--white);
+      line-height: 1.1;
+      text-shadow: 0 2px 18px rgba(0,0,0,0.7);
+    }
+    header h1 span { color: var(--gold); }
+    header p.sub {
+      margin-top: 0.75rem;
+      font-size: 1rem;
+      color: rgba(255,255,255,0.72);
+      font-style: italic;
+      max-width: 520px;
+    }
+
+    /* ── CARD ── */
+    .card {
+      background: rgba(15, 15, 40, 0.82);
+      border: 1px solid rgba(255,255,255,0.13);
+      border-radius: 4px;
+      backdrop-filter: blur(14px);
+      width: 100%;
+      max-width: 560px;
+      padding: 2.2rem 2rem;
+      box-shadow: 0 8px 60px rgba(0,0,0,0.55);
+      animation: fadeUp 0.9s 0.2s ease both;
+    }
+
+    /* ── INPUTS ── */
+    .field {
+      margin-bottom: 1.4rem;
+    }
+    label {
+      display: block;
+      font-family: 'Oswald', sans-serif;
+      font-size: 0.82rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.65);
+      margin-bottom: 0.4rem;
+    }
+    label strong { color: var(--gold); font-weight: 600; }
+
+    input[type="number"] {
+      width: 100%;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 3px;
+      padding: 0.65rem 1rem;
+      font-family: 'Oswald', sans-serif;
+      font-size: 1.15rem;
+      color: var(--white);
+      outline: none;
+      transition: border-color 0.2s, background 0.2s;
+      -moz-appearance: textfield;
+    }
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+    input[type="number"]:focus {
+      border-color: var(--gold);
+      background: rgba(255,215,0,0.06);
+    }
+
+    .hint {
+      margin-top: 0.3rem;
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.38);
+      font-style: italic;
+    }
+    .hint span { color: rgba(255,215,0,0.7); font-style: normal; font-family: 'Oswald', sans-serif; }
+
+    /* derived display */
+    .derived {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      background: rgba(255,255,255,0.04);
+      border: 1px dashed rgba(255,215,0,0.25);
+      border-radius: 3px;
+      padding: 0.55rem 1rem;
+      margin-top: 0.3rem;
+    }
+    .derived span.label-d {
+      font-family: 'Oswald', sans-serif;
+      font-size: 0.78rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.45);
+      flex: 1;
+    }
+    .derived span.value-d {
+      font-family: 'Oswald', sans-serif;
+      font-size: 1.1rem;
+      color: var(--gold);
+    }
+
+    /* divider */
+    .divider {
+      border: none;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      margin: 1.6rem 0;
+    }
+
+    /* ── RESULT ── */
+    .result-box {
+      background: linear-gradient(135deg, rgba(178,34,52,0.25) 0%, rgba(60,59,110,0.35) 100%);
+      border: 1px solid rgba(255,215,0,0.35);
+      border-radius: 4px;
+      padding: 1.6rem 1.4rem;
+      text-align: center;
+      min-height: 130px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      transition: all 0.4s ease;
+    }
+    .result-box .result-label {
+      font-family: 'Oswald', sans-serif;
+      font-size: 0.8rem;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.5);
+    }
+    .result-box .years-free {
+      font-family: 'Oswald', sans-serif;
+      font-size: clamp(3rem, 10vw, 5rem);
+      font-weight: 700;
+      color: var(--gold);
+      line-height: 1;
+      text-shadow: 0 0 30px rgba(255,215,0,0.5);
+      transition: all 0.4s ease;
+    }
+    .result-box .years-free.zero { color: rgba(255,255,255,0.2); text-shadow: none; }
+    .result-box .result-sub {
+      font-family: 'Oswald', sans-serif;
+      font-size: 1rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.65);
+    }
+    .result-box .breakdown {
+      margin-top: 0.7rem;
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.45);
+      font-style: italic;
+      line-height: 1.5;
+    }
+    .result-box .breakdown strong { color: rgba(255,215,0,0.7); font-style: normal; }
+
+    /* ── STATS ROW ── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.8rem;
+      margin-top: 1rem;
+    }
+    .stat-chip {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 3px;
+      padding: 0.65rem 0.8rem;
+      text-align: center;
+    }
+    .stat-chip .chip-val {
+      font-family: 'Oswald', sans-serif;
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: var(--white);
+    }
+    .stat-chip .chip-lbl {
+      font-family: 'Oswald', sans-serif;
+      font-size: 0.68rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.4);
+      margin-top: 0.15rem;
+    }
+
+    /* ── FOOTER NOTE ── */
+    .footer-note {
+      margin-top: 2rem;
+      text-align: center;
+      font-size: 0.78rem;
+      color: rgba(255,255,255,0.28);
+      font-style: italic;
+      max-width: 500px;
+      line-height: 1.6;
+    }
+
+    /* ── ANIMATIONS ── */
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(28px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* pulse on result change */
+    @keyframes pulse {
+      0%   { transform: scale(1); }
+      50%  { transform: scale(1.06); }
+      100% { transform: scale(1); }
+    }
+    .pulse { animation: pulse 0.35s ease; }
+  </style>
+</head>
+<body>
+
+<canvas id="flagCanvas"></canvas>
+<div class="overlay"></div>
+
+<div class="page">
+
+  <header>
+    <div class="eyebrow">🇺🇸 American Tax Freedom</div>
+    <h1>How Many Years Did You<br><span>Work for Free?</span></h1>
+    <p class="sub">Every dollar taxed is time you'll never get back. See exactly how many years of your life were spent working — for nothing in your pocket.</p>
+  </header>
+
+  <div class="card">
+
+    <!-- INPUT 1 -->
+    <div class="field">
+      <label>Hours worked <strong>per week</strong></label>
+      <input type="number" id="hoursPerWeek" min="1" max="168" placeholder="e.g. 40" />
+      <div class="derived">
+        <span class="label-d">Monthly hours (auto-calculated)</span>
+        <span class="value-d" id="hoursPerMonth">—</span>
+      </div>
+    </div>
+
+    <!-- INPUT 2 -->
+    <div class="field">
+      <label>Months worked <strong>per year</strong></label>
+      <input type="number" id="monthsPerYear" min="1" max="12" placeholder="e.g. 11" />
+      <div class="hint">Exclude months off, sabbaticals, etc.</div>
+    </div>
+
+    <!-- INPUT 3 -->
+    <div class="field">
+      <label>Total years worked <strong>in your lifetime</strong></label>
+      <input type="number" id="yearsWorked" min="1" max="70" placeholder="e.g. 30" />
+    </div>
+
+    <!-- INPUT 4 -->
+    <div class="field">
+      <label>Tax rate taken from you <strong>annually (%)</strong></label>
+      <input type="number" id="taxRate" min="0" max="100" step="0.1" placeholder="e.g. 28" />
+      <div class="hint">Include federal + state + local ≈ <span id="taxHint">—</span></div>
+    </div>
+
+    <hr class="divider"/>
+
+    <!-- RESULT -->
+    <div class="result-box">
+      <div class="result-label">You worked for FREE for</div>
+      <div class="years-free zero" id="yearsResult">—</div>
+      <div class="result-sub" id="resultSub">Enter your numbers above</div>
+      <div class="breakdown" id="breakdown"></div>
+    </div>
+
+    <div class="stats-row" id="statsRow" style="display:none;">
+      <div class="stat-chip">
+        <div class="chip-val" id="statTotalHours">—</div>
+        <div class="chip-lbl">Total Hours Worked</div>
+      </div>
+      <div class="stat-chip">
+        <div class="chip-val" id="statTaxedHours">—</div>
+        <div class="chip-lbl">Hours Taxed Away</div>
+      </div>
+      <div class="stat-chip">
+        <div class="chip-val" id="statTaxedMonths">—</div>
+        <div class="chip-lbl">Months Worked Free</div>
+      </div>
+      <div class="stat-chip">
+        <div class="chip-val" id="statTaxedDays">—</div>
+        <div class="chip-lbl">Days Worked Free</div>
+      </div>
+    </div>
+
+  </div>
+
+  <p class="footer-note">
+    This calculator uses straightforward math: (hours/week × 4.33) × months/year × years × tax%. 
+    It does not account for compounding, investment returns, or non-income taxes.
+    The figure represents the equivalent full-time labor you performed that was taken via taxation.
+  </p>
+
+</div>
+
+<!-- ═══════════════════════════════════
+     FLAG CANVAS ANIMATION
+════════════════════════════════════ -->
+<script>
+(function () {
+  const canvas = document.getElementById('flagCanvas');
+  const ctx = canvas.getContext('2d');
+  let W, H, t = 0;
+
+  function resize() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // Flag proportions (1:1.9)
+  // We'll tile / stretch to fill viewport
+  const STRIPES = 13;
+  const UNION_W_RATIO = 0.4;
+  const UNION_H_RATIO = 7 / 13;
+
+  // 50-star positions (rows: 6×5 + 4×4 alternating = 50)
+  const stars = [];
+  function buildStars(uw, uh) {
+    stars.length = 0;
+    const rows = [6,5,6,5,6,5,6,5,6];
+    let yOff = uh * 0.10;
+    const rowH = uh * 0.80 / 9;
+    for (let r = 0; r < rows.length; r++) {
+      const cols = rows[r];
+      const xOff = cols === 6 ? uw * 0.08 : uw * 0.13;
+      const colW = (uw * (cols === 6 ? 0.84 : 0.74)) / (cols - 1);
+      for (let c = 0; c < cols; c++) {
+        stars.push({ x: xOff + c * colW, y: yOff + r * rowH });
+      }
+    }
+  }
+
+  function drawStar(x, y, r) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.beginPath();
+    for (let i = 0; i < 5; i++) {
+      const a = (i * 4 * Math.PI) / 5 - Math.PI / 2;
+      const b = ((i * 4 + 2) * Math.PI) / 5 - Math.PI / 2;
+      ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+      ctx.lineTo(Math.cos(b) * r * 0.4, Math.sin(b) * r * 0.4);
+    }
+    ctx.closePath();
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawFlag() {
+    const FW = W;
+    const FH = H;
+
+    ctx.clearRect(0, 0, W, H);
+
+    const stripeH = FH / STRIPES;
+    const WAVE_AMP  = FH * 0.03;
+    const WAVE_FREQ = 2.5;
+    const WAVE_SPEED = 0.04;
+
+    // Clip path: full canvas (we fill the whole BG)
+    const RED   = '#B22234';
+    const WHITE = '#FFFFFF';
+
+    // Draw wavy stripes
+    for (let s = 0; s < STRIPES; s++) {
+      const color = s % 2 === 0 ? RED : WHITE;
+      ctx.beginPath();
+
+      // top edge of stripe
+      for (let x = 0; x <= FW; x += 4) {
+        const waveY = Math.sin(x / FW * Math.PI * WAVE_FREQ + t) * WAVE_AMP;
+        const y = s * stripeH + waveY;
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      // bottom-right corner
+      const waveYBR = Math.sin(FW / FW * Math.PI * WAVE_FREQ + t) * WAVE_AMP;
+      ctx.lineTo(FW, (s + 1) * stripeH + waveYBR);
+      // bottom edge reversed
+      for (let x = FW; x >= 0; x -= 4) {
+        const waveY = Math.sin(x / FW * Math.PI * WAVE_FREQ + t) * WAVE_AMP;
+        const y = (s + 1) * stripeH + waveY;
+        ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fillStyle = color;
+      ctx.fill();
+    }
+
+    // Union canton
+    const UW = FW * UNION_W_RATIO;
+    const UH = stripeH * 7; // 7 red stripes tall
+
+    // wave offset for canton top-left corner
+    const cantonWaveY = Math.sin(0 * Math.PI * WAVE_FREQ + t) * WAVE_AMP;
+    ctx.fillStyle = '#3C3B6E';
+    ctx.fillRect(0, cantonWaveY, UW, UH);
+
+    // Stars inside canton
+    buildStars(UW, UH);
+    const starR = stripeH * 0.38;
+    for (const s of stars) {
+      drawStar(s.x, s.y + cantonWaveY, starR);
+    }
+
+    t += WAVE_SPEED;
+  }
+
+  function loop() {
+    drawFlag();
+    requestAnimationFrame(loop);
+  }
+  loop();
+})();
+</script>
+
+<!-- ═══════════════════════════════════
+     CALCULATOR LOGIC
+════════════════════════════════════ -->
+<script>
+(function () {
+  const ids = {
+    hoursPerWeek : document.getElementById('hoursPerWeek'),
+    hoursPerMonth: document.getElementById('hoursPerMonth'),
+    monthsPerYear: document.getElementById('monthsPerYear'),
+    yearsWorked  : document.getElementById('yearsWorked'),
+    taxRate       : document.getElementById('taxRate'),
+    taxHint       : document.getElementById('taxHint'),
+
+    yearsResult  : document.getElementById('yearsResult'),
+    resultSub    : document.getElementById('resultSub'),
+    breakdown    : document.getElementById('breakdown'),
+    statsRow     : document.getElementById('statsRow'),
+
+    statTotalHours : document.getElementById('statTotalHours'),
+    statTaxedHours : document.getElementById('statTaxedHours'),
+    statTaxedMonths: document.getElementById('statTaxedMonths'),
+    statTaxedDays  : document.getElementById('statTaxedDays'),
+  };
+
+  const WEEKS_PER_MONTH = 4.33;
+
+  function fmt(n, dec = 1) {
+    return n.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+  }
+  function fmtInt(n) {
+    return Math.round(n).toLocaleString('en-US');
+  }
+
+  function calcMonthlyHours() {
+    const h = parseFloat(ids.hoursPerWeek.value);
+    if (!isNaN(h) && h > 0) {
+      const monthly = h * WEEKS_PER_MONTH;
+      ids.hoursPerMonth.textContent = fmt(monthly, 1) + ' hrs/mo';
+    } else {
+      ids.hoursPerMonth.textContent = '—';
+    }
+    calculate();
+  }
+
+  function updateTaxHint() {
+    const r = parseFloat(ids.taxRate.value);
+    if (!isNaN(r) && r > 0) {
+      ids.taxHint.textContent = fmt(r, 1) + '%';
+    } else {
+      ids.taxHint.textContent = '—';
+    }
+    calculate();
+  }
+
+  function calculate() {
+    const hpw = parseFloat(ids.hoursPerWeek.value);
+    const mpy = parseFloat(ids.monthsPerYear.value);
+    const yw  = parseFloat(ids.yearsWorked.value);
+    const tr  = parseFloat(ids.taxRate.value);
+
+    // Validate all fields present
+    if ([hpw, mpy, yw, tr].some(v => isNaN(v) || v <= 0)) {
+      ids.yearsResult.textContent = '—';
+      ids.yearsResult.className = 'years-free zero';
+      ids.resultSub.textContent = 'Enter your numbers above';
+      ids.breakdown.textContent = '';
+      ids.statsRow.style.display = 'none';
+      return;
+    }
+
+    // Hours per month
+    const hpm = hpw * WEEKS_PER_MONTH;
+    // Total hours ever worked
+    const totalHoursPerYear = hpm * mpy;
+    const totalHours = totalHoursPerYear * yw;
+
+    // Hours taken by taxes
+    const taxedHours = totalHours * (tr / 100);
+
+    // Convert taxed hours back to "equivalent work years"
+    // (using same schedule: hpm * mpy hours = 1 year of work)
+    const hoursPerWorkYear = hpm * mpy;
+    const freeYears = taxedHours / hoursPerWorkYear; // = yw * (tr/100)
+
+    const freeMonths = freeYears * 12;
+    const freeDays   = taxedHours / (hpw / 5); // working days (5-day week)
+
+    // Animate
+    ids.yearsResult.classList.remove('pulse');
+    void ids.yearsResult.offsetWidth;
+    ids.yearsResult.classList.add('pulse');
+
+    ids.yearsResult.textContent = fmt(freeYears, 2);
+    ids.yearsResult.className   = 'years-free pulse';
+    ids.resultSub.textContent   = 'years worked for FREE (taken via taxes)';
+
+    // Breakdown sentence
+    const pct = fmt(tr, 1);
+    ids.breakdown.innerHTML =
+      `At <strong>${pct}%</strong> taxation over <strong>${fmt(yw,0)} years</strong>, ` +
+      `you've donated <strong>${fmt(freeYears,2)} years</strong> of your life — ` +
+      `<strong>${fmt(freeMonths,1)} months</strong> of labor — directly to the government.`;
+
+    // Stats chips
+    ids.statTotalHours.textContent  = fmtInt(totalHours) + ' hrs';
+    ids.statTaxedHours.textContent  = fmtInt(taxedHours) + ' hrs';
+    ids.statTaxedMonths.textContent = fmt(freeMonths, 1) + ' mo';
+    ids.statTaxedDays.textContent   = fmtInt(Math.max(0, freeDays)) + ' days';
+    ids.statsRow.style.display      = 'grid';
+  }
+
+  // Bind events
+  ids.hoursPerWeek.addEventListener('input', calcMonthlyHours);
+  ids.monthsPerYear.addEventListener('input', calculate);
+  ids.yearsWorked.addEventListener('input', calculate);
+  ids.taxRate.addEventListener('input', updateTaxHint);
+})();
+</script>
+
+</body>
+</html>
